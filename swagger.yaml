@@ -1,0 +1,187 @@
+swagger: "2.0"
+info:
+  description: Usql client for Direktiv
+  title: usql
+  version: 1.0.0
+  x-direktiv-meta:
+    container: direktiv/usql
+    maintainer: |-
+      [direktiv.io](https://www.direktiv.io)
+    issues: https://github.com/direktiv-apps/usql/issues
+    url: https://github.com/direktiv-apps/usql 
+    category: Database
+    license: |-
+      [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
+    long-description: |-
+     [Usql](https://github.com/xo/usql) is a universal command-line interface for PostgreSQL, MySQL, Oracle Database, SQLite3, Microsoft SQL Server, and many other databases including NoSQL and non-relational databases. 
+     This service provides easy access to database from Direktiv and supports variables and interpolation as well. 
+consumes:
+- application/json
+produces:
+- application/json
+schemes:
+- http
+paths:
+  /: 
+    delete:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+          description: |
+            On cancel Direktiv sends a DELETE request to
+            the action with id in the header
+      x-direktiv:
+        cancel: echo 'cancel {{ .DirektivActionID }}'
+      responses:
+        200:
+    post:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+          description: |
+            direktiv action id is an UUID. 
+            For development it can be set to 'development'
+        - name: Direktiv-TempDir
+          in: header
+          type: string
+          description: |
+            direktiv temp dir is the working directory for that request
+            For development it can be set to e.g. '/tmp'
+        - name: body
+          in: body
+          schema:
+            type: object
+            required:
+              - connection
+            properties:
+              connection:
+                type: string
+                example: pg://myuser:mypwd@MYDATABAESERVER:5432
+                description: Connection string for sql commands. This will be used for all commands and has to be URL-encoded. 
+              queries:
+                description: >
+                  List of sql commands. Commands can use interpolation:<br/>
+                  query: select * from table where id = :'ID'<br/>
+                  args: ID=123
+                example:
+                  query: select * from mytable where key = :'KEY'
+                  args: 
+                    - KEY=1
+                type: array
+                items:
+                  type: object
+                  properties:
+                    query:
+                      type: string
+                      example: select * from table where value = :'ARG'
+                    args:
+                      type: array
+                      example: ARG=myarg
+                      items: 
+                        type: string
+      x-direktiv-function: |-
+        functions:
+          - id: usql
+            image: direktiv/usql
+            type: knative-workflow
+      x-direktiv-examples:
+        - title: Basic
+          content: |-
+            - id: insert 
+                 type: action
+                 action:
+                   function: usql
+                   input:
+                     connection: pg://direktiv:rbRIw3I6%7B5%29%5Dda%287m.R_%5D%3Eh%5D@192.168.0.177:5432
+                     queries:
+                       - query: select * from mydata
+        - title: Variables
+          content: |-
+            - id: insert 
+                 type: action
+                 action:
+                   function: usql
+                   input:
+                     connection: pg://direktiv:rbRIw3I6%7B5%29%5Dda%287m.R_%5D%3Eh%5D@192.168.0.177:5432
+                     queries:
+                       - query: select * from mydata where id = :'ID'
+                         args:
+                         - ID=3a7ff4a5-fadb-4d41-97bb-86917cdad46a
+        - title: Insert
+          content: |-
+            - id: insert 
+                 type: action
+                 action:
+                   function: usql
+                   input:
+                     connection: pg://direktiv:rbRIw3I6%7B5%29%5Dda%287m.R_%5D%3Eh%5D@192.168.0.177:5432
+                     queries:
+                       - query: insert into testme values ('hello world')
+      x-direktiv:  
+        cmds:
+        - action: foreach
+          loop: .Queries
+          exec: |-
+            usql {{ .Body.Connection }} -c "{{ .Item.Query }}" -J --set SHOW_HOST_INFORMATION=false 
+            {{- range .Item.Args }} --set={{.}} {{- end}}
+        output: |       
+          {
+            "queries": {{  index . 0 | toJson }}
+          }
+      x-direktiv-errors:
+        io.direktiv.command.error: Command execution failed
+        io.direktiv.output.error: Template error for output generation of the service
+        io.direktiv.ri.error: Can not create information object from request
+      responses:
+        200:
+          description: The service responds with one JSON payload per SQL query. 
+          examples:
+            query:
+              queries:
+              - result:
+                - id: c5c20864-2c1b-47e2-94ab-185a3e8cf9ee
+                  name: 123
+                success: true
+              - result: INSERT 1
+                success: true
+          schema:
+            type: object
+            properties:
+              queries:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    result:
+                      type: object
+                      additionalProperties: {}
+                    success:
+                      type: boolean
+        default:
+          description: generic error response
+          headers:
+            Direktiv-ErrorCode:
+              type: string
+            Direktiv-ErrorMessage:
+              type: string
+          schema:
+            $ref: "#/definitions/error"
+definitions:
+  direktivFile:
+    type: object
+    x-go-type:
+      type: DirektivFile
+      import:
+        package: github.com/direktiv/apps/go/pkg/apps 
+  error:
+    type: object
+    required:
+      - errorCode
+      - errorMessage
+    properties:
+      errorCode:
+        type: string
+      errorMessage:
+        type: string
