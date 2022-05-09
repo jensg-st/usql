@@ -61,7 +61,14 @@ This service provides easy access to database from Direktiv and supports variabl
            - query: insert into testme values ('hello world')
    ```
 
-### Responses
+### Request
+
+
+
+#### Request Attributes
+[PostParamsBody](#post-params-body)
+
+### Response
   The service responds with one JSON payload per SQL query.
 #### Reponse Types
     
