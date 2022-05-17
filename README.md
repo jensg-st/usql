@@ -4,7 +4,7 @@
 Usql client for Direktiv
 
 ---
-- #### Category: Database
+- #### Categories: database
 - #### Image: direktiv/usql 
 - #### License: [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 - #### Issue Tracking: https://github.com/direktiv-apps/usql/issues
